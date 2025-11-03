@@ -1,0 +1,5 @@
+When you deploy:
+
+Set NODE_ENV=production
+
+Set COOKIE_DOMAIN to your actual domain (e.g. tableofkings.com)
