@@ -1,98 +1,199 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# MatcherHub (Faith‑based Dating App) — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend for the MatcherHub project built with **NestJS + Prisma + MongoDB**.  
+Production‑ready **cookie‑based auth** with per‑device sessions, **rotating refresh tokens**, **Remember Me**, **logout per device** and **logout‑all**. Includes TTL auto‑cleanup for sessions and a clean, testable structure.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## ✨ Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **NestJS** application, structured modules
+- **Prisma (MongoDB)** data access
+- **Cookie‑based JWT**:
+  - `accessToken` (15m) — httpOnly cookie
+  - `refreshToken` (7d by default, 30d with Remember Me) — httpOnly cookie
+  - Refresh cookie format: `sessionId.rawToken` (deterministic lookup)
+- **Per‑device sessions** (each device has its own session row)
+- **Rotating refresh** on every `POST /auth/refresh`
+- **Remember Me** (30 days for that device)
+- **Logout (this device)** and **Logout‑all** (revoke all sessions)
+- **Max concurrent devices**: 5 (evict oldest active session on new login)
+- **TTL index** on `Session.expiresAt` for auto cleanup
+- Clean guard (`JwtAuthGuard`) for protected routes
 
-## Project setup
+---
 
+## 🧱 Tech Stack
+
+- Node 20+ / NestJS 10+
+- Prisma 5+ (MongoDB)
+- JWT (access), bcrypt (passwords), httpOnly cookies
+- Class‑validator / Class‑transformer
+
+---
+
+## 🚀 Quick Start
+
+### 1) Requirements
+- Node.js 20+
+- MongoDB Atlas (or local MongoDB) — create a DB named `matcherhub`
+
+### 2) Clone & Install
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 3) Environment
+Create `.env` in the **backend** folder:
 
-```bash
-# development
-$ npm run start
+```env
+# Server
+PORT=3000
+API_PREFIX=/api/v1
+NODE_ENV=development
 
-# watch mode
-$ npm run start:dev
+# JWT
+JWT_ACCESS_SECRET=replace_with_long_random_string
 
-# production mode
-$ npm run start:prod
+# MongoDB (note the database name at the end!)
+DATABASE_URL="mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/matcherhub?retryWrites=true&w=majority"
 ```
 
-## Run tests
+> If you see Prisma `P1013` invalid database string, ensure the **database name** is present (e.g., `/matcherhub`).
 
+### 4) Prisma (Mongo)
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma generate --schema=./prisma/schema.prisma
+npx prisma db push --schema=./prisma/schema.prisma
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 5) Run dev
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The API will be at: `http://localhost:${PORT}${API_PREFIX}` (e.g., `http://localhost:3000/api/v1`).
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🔐 Auth Endpoints
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Base: `${API_PREFIX}/auth`
 
-## Support
+| Method | Path         | Body / Notes                                                                                   | Auth |
+|-------:|--------------|-------------------------------------------------------------------------------------------------|:----:|
+| POST   | `/register`  | `{ email, password, displayName? }`                                                            |  –   |
+| POST   | `/login`     | `{ email, password, rememberMe? }` → sets `accessToken` (15m) + `refreshToken` (7d/30d)        |  –   |
+| POST   | `/refresh`   | – uses `refreshToken` cookie (`sessionId.rawToken`) → rotates cookies                          |  –   |
+| POST   | `/logout`    | – revokes **only this device** session; clears cookies                                         |  –   |
+| POST   | `/logout-all`| – revokes **all** active sessions for current user; clears cookies on this device              | JWT |
+| GET    | `/me`        | – returns current user (optional endpoint; add when needed)                                    | JWT |
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+**Cookie names**: `accessToken`, `refreshToken`  
+**Cookie options (dev)**: `httpOnly`, `sameSite:lax`, `secure:false`  
+**Cookie options (prod)**: `httpOnly`, `sameSite:none`, `secure:true`, HTTPS only, CORS configured
 
-## Stay in touch
+**Session policy**:
+- Max **5** concurrent devices (oldest evicted on new login beyond cap)
+- `refreshToken` rotates each refresh
+- `logout` affects only current device; `logout-all` kills every device
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 🧪 Testing Scenarios
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Use **Thunder Client** profiles or **Newman** with per‑device cookie jars.
+
+### Newman (Windows PowerShell one‑liners)
+```powershell
+# Device A
+newman run .\FaithDating.postman_collection.json -e .\local.postman_environment.json --cookie-jar .\A.cookies
+
+# Device B
+newman run .\FaithDating.postman_collection.json -e .\local.postman_environment.json --cookie-jar .\B.cookies
+```
+
+**Happy path**:
+1. Login A → Refresh A → OK  
+2. Login B → Refresh B → OK  
+3. Logout A → Refresh A = 401, Refresh B = OK (per‑device verified)
+
+**Remember Me verification**:
+- Login with `{ rememberMe: true }` → `refreshToken.Max-Age ≈ 2592000` (30d)
+- Without rememberMe → `Max-Age ≈ 604800` (7d)  
+- After `refresh`, `Max-Age` remains the same as original for that device
+
+---
+
+## ⚙️ Production Notes
+
+- Set `sameSite: 'none'` and `secure: true` for cookies (HTTPS only)
+- Configure **CORS** to allow your frontend origin and send cookies (`credentials: true`)
+- Optionally verify `sid` (session id) from access token in guards for sensitive routes
+- Add **rate limiting** on `/auth/login` to prevent brute‑force attempts
+- Use a long, random `JWT_ACCESS_SECRET`
+
+---
+
+## 🗄️ Prisma Models (excerpt)
+
+```prisma
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  verified     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Session {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @db.ObjectId
+  userAgent         String?
+  ip                String?
+  refreshTokenHash  String
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  revokedAt         DateTime?
+  replacedByTokenId String?  @db.ObjectId
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+```
+
+> The app ensures a TTL index on `Session.expiresAt` (auto‑cleanup). If you ever see a Mongo index conflict during startup in dev, just drop the old index and restart.
+
+---
+
+## 🧰 Troubleshooting
+
+- **P1013 Invalid Mongo URL** → include the **database name** at the end of `DATABASE_URL`.
+- **IndexOptionsConflict (code 85)** on startup → an existing non‑TTL index on `expiresAt` conflicts with TTL creation. Drop it once:
+  ```js
+  use matcherhub
+  db.Session.dropIndex("Session_expiresAt_idx")
+  ```
+  then restart.
+- **PowerShell line continuation errors** → use one‑liners or PowerShell backticks `` ` `` for multi‑line commands.
+
+---
+
+## 📦 Scripts
+
+```bash
+npm run start         # dev (non-watch)
+npm run start:dev     # dev watch mode
+npm run build         # compile TS
+npm run start:prod    # run compiled dist
+npm run test          # unit tests (if any)
+npm run test:e2e      # e2e tests (if any)
+```
+
+---
+
+## 📄 License
+
+MIT
