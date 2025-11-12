@@ -29,4 +29,9 @@ export class AuthController {
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.auth.logout(req, res);
   }
+//   @Get('me')
+//   @UseGuards(JwtAuthGuard)
+//   me(@Req() req: any) {
+//   return this.auth.me(req.user);
+// }
 }

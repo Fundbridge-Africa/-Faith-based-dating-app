@@ -16,6 +16,19 @@ model User {
   verified     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Onboarding / Profile
+  onboardingStatus String   @default("PENDING") // PENDING, COMPLETED
+  intentScore      Int?
+  faith            String?
+  values           String[]        
+  birthDate        DateTime?
+  gender           String?        
+  interestedIn     String?
+  bio              String?
+  photos           String[]
+  location         String?
+  lastActiveAt     DateTime @default(now())
 }
 
 model Session {

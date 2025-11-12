@@ -14,11 +14,13 @@ export class AuthService {
 
   // --- helpers ---
   private genRawRefresh(): string {
-    return crypto.randomBytes(48).toString('hex'); // 96 chars
+    return crypto.randomBytes(48).toString('hex');
   }
+  private weekMs()   { return 7 * 24 * 60 * 60 * 1000 }
+  private monthMs()  { return 30 * 24 * 60 * 60 * 1000 }
   private async hash(value: string) { return bcrypt.hash(value, 12); }
-  private accessTtlMs() { return 15 * 60 * 1000; }       // 15m
-  private refreshTtlMs() { return 7 * 24 * 60 * 60 * 1000; } // 7d
+  private accessTtlMs() { return 15 * 60 * 1000; }       
+  private refreshTtlMs() { return 7 * 24 * 60 * 60 * 1000; }
   private parseRefreshCookie(raw: string | undefined) {
     if (!raw) throw new UnauthorizedException('No refresh token');
     const [sessionId, token] = raw.split('.', 2);
@@ -45,108 +47,107 @@ export class AuthService {
   }
 
   async login(dto: LoginUserDto, req: Request, res: Response) {
-    const email = dto.email.toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, displayName: true, passwordHash: true, verified: true },
-    });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+  const email = dto.email.toLowerCase();
+  const user = await this.prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, displayName: true, passwordHash: true, verified: true },
+  });
+  if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const ok = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!ok) throw new UnauthorizedException('Invalid credentials');
+  const ok = await bcrypt.compare(dto.password, user.passwordHash);
+  if (!ok) throw new UnauthorizedException('Invalid credentials');
 
-    // access
-    const accessToken = await this.jwt.signAsync({ sub: user.id, email: user.email });
+  // issue access
+  const accessToken = await this.jwt.signAsync({ sub: user.id, email: user.email });
 
-    // session + refresh
-    const raw = this.genRawRefresh();
-    const refreshHash = await this.hash(raw);
-    const expires = new Date(Date.now() + this.refreshTtlMs());
+  // per-device lifespan
+  const lifeMs = dto.rememberMe ? this.monthMs() : this.weekMs();
 
-    const ua = req.headers['user-agent'] as string | undefined;
-    const ip =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      req.socket?.remoteAddress ||
-      undefined;
+  // session + refresh
+  const raw = this.genRawRefresh();
+  const refreshHash = await this.hash(raw);
+  const expires = new Date(Date.now() + lifeMs);
 
-    const session = await this.prisma.session.create({
-      data: {
-        userId: user.id,
-        userAgent: ua,
-        ip,
-        refreshTokenHash: refreshHash,
-        expiresAt: expires,
-      },
-      select: { id: true },
-    });
+  const ua = req.headers['user-agent'] as string | undefined;
+  const ip =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    undefined;
 
-    // cookies
-    res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(this.accessTtlMs()));
-    res.cookie(REFRESH_COOKIE, `${session.id}.${raw}`, cookieOpts(this.refreshTtlMs()));
+  const session = await this.prisma.session.create({
+    data: {
+      userId: user.id,
+      userAgent: ua,
+      ip,
+      refreshTokenHash: refreshHash,
+      expiresAt: expires,
+    },
+    select: { id: true },
+  });
 
-    const { passwordHash, ...safe } = user as any;
-    return { user: safe };
+  // cookies
+  res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(this.accessTtlMs()));
+  res.cookie(REFRESH_COOKIE, `${session.id}.${raw}`, cookieOpts(lifeMs));
+
+  const { passwordHash, ...safe } = user as any;
+  return { user: safe };
+}
+
+async refresh(req: Request, res: Response) {
+  const rawCookie = req.cookies?.[REFRESH_COOKIE];
+  const { sessionId, token } = this.parseRefreshCookie(rawCookie);
+
+  const session = await this.prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { id: true, userId: true, refreshTokenHash: true, revokedAt: true, expiresAt: true, createdAt: true },
+  });
+  if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+    throw new UnauthorizedException('Invalid refresh token');
   }
+  const ok = await bcrypt.compare(token, session.refreshTokenHash);
+  if (!ok) throw new UnauthorizedException('Invalid refresh token');
 
-  async refresh(req: Request, res: Response) {
-    const rawCookie = req.cookies?.[REFRESH_COOKIE];
-    const { sessionId, token } = this.parseRefreshCookie(rawCookie);
+  const user = await this.prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { id: true, email: true, displayName: true, verified: true },
+  });
+  if (!user) throw new UnauthorizedException('User not found');
 
-    // find session by id
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-      select: { id: true, userId: true, refreshTokenHash: true, revokedAt: true, expiresAt: true },
-    });
-    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+  // preserve original lifespan
+  const lifeMs = session.expiresAt.getTime() - session.createdAt.getTime();
+  const newRaw = this.genRawRefresh();
+  const newHash = await this.hash(newRaw);
+  const newExpires = new Date(Date.now() + lifeMs);
 
-    const ok = await bcrypt.compare(token, session.refreshTokenHash);
-    if (!ok) throw new UnauthorizedException('Invalid refresh token');
+  const newSession = await this.prisma.session.create({
+    data: {
+      userId: user.id,
+      refreshTokenHash: newHash,
+      expiresAt: newExpires,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      ip:
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        undefined,
+    },
+    select: { id: true },
+  });
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { id: true, email: true, displayName: true, verified: true },
-    });
-    if (!user) throw new UnauthorizedException('User not found');
+  await this.prisma.session.update({
+    where: { id: session.id },
+    data: { revokedAt: new Date(), replacedByTokenId: newSession.id },
+  });
 
-    // rotate: create new session first
-    const newRaw = this.genRawRefresh();
-    const newHash = await this.hash(newRaw);
-    const expires = new Date(Date.now() + this.refreshTtlMs());
+  const accessToken = await this.jwt.signAsync({ sub: user.id, email: user.email });
+  res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(this.accessTtlMs()));
+  res.cookie(REFRESH_COOKIE, `${newSession.id}.${newRaw}`, cookieOpts(lifeMs));
 
-    const newSession = await this.prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshTokenHash: newHash,
-        expiresAt: expires,
-        userAgent: req.headers['user-agent'] as string | undefined,
-        ip:
-          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-          req.socket?.remoteAddress ||
-          undefined,
-      },
-      select: { id: true },
-    });
-
-    // revoke old
-    await this.prisma.session.update({
-      where: { id: session.id },
-      data: { revokedAt: new Date(), replacedByTokenId: newSession.id },
-    });
-
-    // new access
-    const accessToken = await this.jwt.signAsync({ sub: user.id, email: user.email });
-
-    // set cookies again (id.token)
-    res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(this.accessTtlMs()));
-    res.cookie(REFRESH_COOKIE, `${newSession.id}.${newRaw}`, cookieOpts(this.refreshTtlMs()));
-
-    return { user };
-  }
+  return { user };
+}
 
   async logout(req: Request, res: Response) {
     const rawCookie = req.cookies?.[REFRESH_COOKIE];
+    const opts = cookieOpts(0);
     try {
       const { sessionId } = this.parseRefreshCookie(rawCookie);
       await this.prisma.session.update({
@@ -154,8 +155,19 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
     } catch { /* idempotent: ignore */ }
-    res.clearCookie(ACCESS_COOKIE, { path: '/' });
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(ACCESS_COOKIE, { path: '/', sameSite: opts.sameSite, secure: opts.secure });
+    res.clearCookie(REFRESH_COOKIE, { path: '/', sameSite: opts.sameSite, secure: opts.secure });
     return { ok: true };
   }
+  async logoutAll(userId: string, res: Response) {
+  await this.prisma.session.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  // clear cookies on this device too
+  const opts = cookieOpts(0);
+  res.clearCookie(ACCESS_COOKIE, { path: '/', sameSite: opts.sameSite, secure: opts.secure });
+  res.clearCookie(REFRESH_COOKIE, { path: '/', sameSite: opts.sameSite, secure: opts.secure });
+  return { ok: true };
+}
 }
