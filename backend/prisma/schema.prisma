@@ -1,12 +1,13 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
+  output = "../generated/prisma-client"
 }
 
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   email        String   @unique
@@ -16,16 +17,17 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
 model Session {
-  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId             String   @db.ObjectId
-  userAgent          String?
-  ip                 String?
-  refreshTokenHash   String
-  expiresAt          DateTime
-  createdAt          DateTime @default(now())
-  revokedAt          DateTime?
-  replacedByTokenId  String?  @db.ObjectId
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @db.ObjectId
+  userAgent         String?
+  ip                String?
+  refreshTokenHash  String
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  revokedAt         DateTime?
+  replacedByTokenId String?  @db.ObjectId
 
   @@index([userId])
   @@index([expiresAt])
