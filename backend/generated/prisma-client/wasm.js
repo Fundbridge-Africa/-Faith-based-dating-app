@@ -93,17 +93,30 @@ exports.Prisma.UserScalarFieldEnum = {
   displayName: 'displayName',
   verified: 'verified',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  onboardingStatus: 'onboardingStatus',
+  intentScore: 'intentScore',
+  faith: 'faith',
+  values: 'values',
+  birthDate: 'birthDate',
+  gender: 'gender',
+  interestedIn: 'interestedIn',
+  bio: 'bio',
+  photos: 'photos',
+  location: 'location',
+  lastActiveAt: 'lastActiveAt'
 };
 
 exports.Prisma.SessionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   userAgent: 'userAgent',
+  deviceName: 'deviceName',
   ip: 'ip',
   refreshTokenHash: 'refreshTokenHash',
   expiresAt: 'expiresAt',
   createdAt: 'createdAt',
+  lastUsedAt: 'lastUsedAt',
   revokedAt: 'revokedAt',
   replacedByTokenId: 'replacedByTokenId'
 };
@@ -170,13 +183,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../generated/prisma-client\"\n}\n\ndatasource db {\n  provider = \"mongodb\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel User {\n  id           String   @id @default(auto()) @map(\"_id\") @db.ObjectId\n  email        String   @unique\n  passwordHash String\n  displayName  String\n  verified     Boolean  @default(false)\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n}\n\nmodel Session {\n  id                String    @id @default(auto()) @map(\"_id\") @db.ObjectId\n  userId            String    @db.ObjectId\n  userAgent         String?\n  ip                String?\n  refreshTokenHash  String\n  expiresAt         DateTime\n  createdAt         DateTime  @default(now())\n  revokedAt         DateTime?\n  replacedByTokenId String?   @db.ObjectId\n\n  @@index([userId])\n  @@index([expiresAt])\n}\n",
-  "inlineSchemaHash": "a540b8d5ab4a400be94a5608db12d4bff909a8af7820b3fa0789b1fe2ad3148b",
+  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../generated/prisma-client\"\n}\n\ndatasource db {\n  provider = \"mongodb\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel User {\n  id           String   @id @default(auto()) @map(\"_id\") @db.ObjectId\n  email        String   @unique\n  passwordHash String\n  displayName  String\n  verified     Boolean  @default(false)\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n\n  // Onboarding / Profile\n  onboardingStatus String    @default(\"PENDING\") // PENDING, COMPLETED\n  intentScore      Int?\n  faith            String?\n  values           String[]\n  birthDate        DateTime?\n  gender           String?\n  interestedIn     String?\n  bio              String?\n  photos           String[]\n  location         String?\n  lastActiveAt     DateTime  @default(now())\n}\n\nmodel Session {\n  id                String    @id @default(auto()) @map(\"_id\") @db.ObjectId\n  userId            String    @db.ObjectId\n  userAgent         String?\n  deviceName        String?\n  ip                String?\n  refreshTokenHash  String\n  expiresAt         DateTime\n  createdAt         DateTime  @default(now())\n  lastUsedAt        DateTime  @default(now()) // NEW\n  revokedAt         DateTime?\n  replacedByTokenId String?   @db.ObjectId\n\n  @@index([userId, lastUsedAt])\n  @@index([expiresAt])\n}\n",
+  "inlineSchemaHash": "613089d1aab6fcf85cf67cbce54c1fd29e7876c385931b1577c6e4ab59af4e13",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\",\"dbName\":\"_id\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"passwordHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"displayName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"verified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\",\"dbName\":\"_id\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userAgent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ip\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"refreshTokenHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"revokedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"replacedByTokenId\",\"kind\":\"scalar\",\"type\":\"String\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\",\"dbName\":\"_id\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"passwordHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"displayName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"verified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"onboardingStatus\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"intentScore\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"faith\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"values\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"birthDate\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"gender\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"interestedIn\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bio\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"photos\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"location\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"lastActiveAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\",\"dbName\":\"_id\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userAgent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"deviceName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ip\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"refreshTokenHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"lastUsedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"revokedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"replacedByTokenId\",\"kind\":\"scalar\",\"type\":\"String\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),

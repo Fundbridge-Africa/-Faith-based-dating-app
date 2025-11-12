@@ -121,17 +121,30 @@ exports.Prisma.UserScalarFieldEnum = {
   displayName: 'displayName',
   verified: 'verified',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  onboardingStatus: 'onboardingStatus',
+  intentScore: 'intentScore',
+  faith: 'faith',
+  values: 'values',
+  birthDate: 'birthDate',
+  gender: 'gender',
+  interestedIn: 'interestedIn',
+  bio: 'bio',
+  photos: 'photos',
+  location: 'location',
+  lastActiveAt: 'lastActiveAt'
 };
 
 exports.Prisma.SessionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   userAgent: 'userAgent',
+  deviceName: 'deviceName',
   ip: 'ip',
   refreshTokenHash: 'refreshTokenHash',
   expiresAt: 'expiresAt',
   createdAt: 'createdAt',
+  lastUsedAt: 'lastUsedAt',
   revokedAt: 'revokedAt',
   replacedByTokenId: 'replacedByTokenId'
 };

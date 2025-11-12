@@ -35,13 +35,15 @@ model Session {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
   userId            String   @db.ObjectId
   userAgent         String?
+  deviceName        String?
   ip                String?
   refreshTokenHash  String
   expiresAt         DateTime
   createdAt         DateTime @default(now())
+  lastUsedAt        DateTime @default(now())      // NEW
   revokedAt         DateTime?
   replacedByTokenId String?  @db.ObjectId
 
-  @@index([userId])
+  @@index([userId, lastUsedAt])
   @@index([expiresAt])
 }
