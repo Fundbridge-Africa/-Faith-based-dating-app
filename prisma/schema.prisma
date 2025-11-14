@@ -39,10 +39,101 @@ model Session {
   refreshTokenHash  String
   expiresAt         DateTime
   createdAt         DateTime @default(now())
-  lastUsedAt        DateTime @default(now())      // NEW
+  lastUsedAt        DateTime @default(now()) 
   revokedAt         DateTime?
   replacedByTokenId String?  @db.ObjectId
 
   @@index([userId, lastUsedAt])
   @@index([expiresAt])
+}
+enum MessageStatus {
+  DELIVERED
+  READ
+}
+enum MemberRole { 
+  USER 
+  ADMIN 
+}
+
+model Conversation {
+  id             String   @id @map("_id") @db.ObjectId @default(auto())
+  isGroup        Boolean  @default(false)
+  title          String?
+  pairKey        String?  @unique // for 1:1 conversations
+  lastMessageAt  DateTime?
+  lastMessageId  String?  @db.ObjectId
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  members        ConversationMember[]
+  messages       Message[]
+
+  @@index([lastMessageAt], map: "conv_lastMessageAt_idx")
+}
+
+model ConversationMember {
+  id             String   @id @map("_id") @db.ObjectId @default(auto())
+  conversationId String   @db.ObjectId
+  userId         String   @db.ObjectId
+  role           MemberRole @default(USER)
+  joinedAt       DateTime @default(now())
+  lastReadMsgId  String?  @db.ObjectId
+  lastReadAt     DateTime?
+  unreadCount    Int      @default(0)
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@unique([conversationId, userId], map: "member_unique")
+  @@index([userId], map: "member_user_idx")
+}
+
+model Message {
+  id             String   @id @map("_id") @db.ObjectId @default(auto())
+  conversationId String   @db.ObjectId
+  senderId       String   @db.ObjectId
+  body           String?
+  attachments    Json?
+  replyToId      String?  @db.ObjectId // id of the message being replied to
+  createdAt      DateTime @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  receipts       MessageReceipt[]
+
+  clientKey      String?  // unique key from client to prevent duplicates
+  @@unique([conversationId, clientKey], map: "msg_client_key_unique")
+  @@index([conversationId, createdAt], map: "msg_stream_idx")
+}
+
+model MessageReceipt {
+  id             String   @id @map("_id") @db.ObjectId @default(auto())
+  messageId String        @db.ObjectId
+  userId    String        @db.ObjectId
+  status    MessageStatus @default(DELIVERED)
+  at        DateTime      @default(now())
+
+  message   Message       @relation(fields: [messageId], references: [id])
+
+  @@unique([messageId, userId], map: "receipt_unique")
+  @@index([userId], map: "receipt_user_idx")
+}
+
+model Block {   // moderation: user blocks another user
+  id             String   @id @map("_id") @db.ObjectId @default(auto())
+  blockerId String   @db.ObjectId
+  blockedId String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model Report {  // moderation: user reports a message
+  id             String   @id @map("_id") @db.ObjectId @default(auto())
+  reporterId String  @db.ObjectId
+  messageId String   @db.ObjectId
+  reason     String
+  createdAt  DateTime @default(now())
+
+  @@index([messageId])
 }

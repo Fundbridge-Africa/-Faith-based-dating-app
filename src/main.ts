@@ -1,18 +1,28 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
-import { PrismaService } from './core/database/prisma.service';
-import { ValidationPipe } from '@nestjs/common';
+import { RedisIoAdapter } from './core/ws/socket.adapter';
+import { REDIS_PUB, REDIS_SUB } from './core/redis/redis.module';
+import type Redis from 'ioredis';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const prismaService = app.get(PrismaService);
-  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-
   app.use(cookieParser());
-  await prismaService.enableShutdownHooks(app);
-  app.setGlobalPrefix(process.env.API_PREFIX || '/api/v1');
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
-  await app.listen(port);
+  app.setGlobalPrefix(process.env.API_PREFIX ?? 'api/v1');
+  app.enableCors({ origin: (process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173').split(','), credentials: true });
+
+  try {
+    const pub = app.get<Redis>(REDIS_PUB);
+    const sub = app.get<Redis>(REDIS_SUB);
+    const adapter = new RedisIoAdapter(app, pub, sub);
+    await adapter.connectToRedis();
+    app.useWebSocketAdapter(adapter);
+    console.log('WS: Redis adapter enabled');
+  } catch (e: any) {
+    console.warn('WS: Redis not connected, using default in-memory adapter:', e?.message ?? e);
+  }
+
+  await app.listen(process.env.PORT ? +process.env.PORT : 3000);
 }
 bootstrap();
