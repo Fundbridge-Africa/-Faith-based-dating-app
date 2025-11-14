@@ -1,4 +1,4 @@
-# -Faith-based-dating-app
+# faith-based-dating-app
 
 ## 📱 Mobile Application Frontend Tech Stack
 
